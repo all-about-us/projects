@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+
+<html>
+
+<head><title>Hangman's game</title>
+
+	<h2>Powered with words and definitions from Merriam-Webster's Learner Dictionary<p></p>
+	<img src="Merriam-Webster_logo.png"></h2>
+
+</head>
+
+<body style="background-color:rgb(192,226,211)">
+	<h1 style="text-align:center;color:rgb(48,16,78)"><strong>This is <em>Hangman's</em> game</strong></h1>
+	<p style="text-align:center"><img src="hangman.png" height=250 width=250></p>
+	<p>If you want to check your spelling, go to <a href="https://www.merriam-webster.com">Merriam-Webster online</a> and good luck!</p>
+
+	<div id="game-info" style="margin-top: 20px;">
+		<h3>Word definition from Merriam-Webster's Learner Dictionary:</h3>
+		<p id="word-definition" style="font-style: italic;"></p>
+		<button id="new-word-button">Choose another word</button>
+	</div>
+
+	
+    <div id="game-container" style="text-align: center">
+        <h2 id="word-mask"></h2>    <p id="guesses-left"></p>   <p id="message-area"></p>  <p id="feedback-area"></p> 
+		<label for="guess-input">Enter a letter:</label>
+        <input type="text" id="guess-input" maxlength="1" style="width: 50px">
+		<p></p>
+        <button id="submit-guess">Check response</button>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
+    
+    <script>
+    function pickWord(){
+		var wordsArray=["amazing", "pancake", "language", "source", "browse"];
+		var word = wordsArray[Math.floor(Math.random()*wordsArray.length)];
+		return word;}
+
+	function setupWordsArray(word){
+		var answerArray=[];
+		for(var i = 0; i < word.length; i++){
+			answerArray[i] = "_";}
+		return answerArray;}
+	
+	function updateGameState(guess, word, answerArray){
+		var correctGuesses = 0;
+		for (var i = 0; i < word.length; i++){
+			if(guess.toLowerCase() === word[i] && answerArray[i] === "_"){
+				answerArray[i] = guess; correctGuesses++;}}
+		if (correctGuesses === 0) {pastGuesses.push(guess.toUpperCase());remainingGuesses--;}
+		return correctGuesses;}
+	
+	
+	function updateDisplay(answerArray, message = "") {
+		$("#word-mask").text(answerArray.join(" "));
+		$("#guesses-left").text(`Имате ${remainingGuesses} опита.`);
+		$("#message-area").text(message);
+		if (pastGuesses.length != 0) {$("#feedback-area").text(`Вече опитахте с ${pastGuesses.join(", ")}`);}
+		else {$("#feedback-area").text("Все още нямате въведени букви.");}
+		if (remainingGuesses <= 0 || remainingLetters <= 0) {
+        $("#guess-input, #submit-guess").prop('disabled', true);}}
+    
+
+	function endGame() {
+		var finalWord = word.toUpperCase();
+		if (remainingLetters === 0) {
+			$("#message-area").html(`<strong>Поздравления! Отговорът е: ${finalWord}</strong>`);}
+		else { $("#message-area").html(`<strong>Опитите свършиха! Думата беше: ${finalWord}</strong>`);}}
+
+
+
+	var word;
+	var answerArray;
+	var remainingGuesses;
+	var remainingLetters;
+	var pastGuesses = [];
+
+	function initializeGame() {
+		word = pickWord(); 
+		answerArray = setupWordsArray(word); 
+		remainingGuesses = 10; 
+		remainingLetters = word.length;
+		updateDisplay(answerArray, "Въведете вашата буква.");
+		$("#guess-input, #submit-guess").prop('disabled', false);}
+
+
+	function handleGuess() {
+		var guess = $("#guess-input").val().trim().toLowerCase();
+		if (guess.length !== 1 || !/^[a-z]$/.test(guess)) {
+			updateDisplay(answerArray, "Моля, въведете само една валидна буква.");
+			$("#guess-input").val("");
+			return;}
+		var correctGuesses = updateGameState(guess, word, answerArray); 
+		if (correctGuesses > 0) {
+			remainingLetters -= correctGuesses;
+			updateDisplay(answerArray, `Поздравления! Буквата '${guess.toUpperCase()}' е намерена!`);}
+		else {updateDisplay(answerArray, `Грешна буква! Няма буква '${guess.toUpperCase()}' в думата.`);}
+		if (remainingGuesses <= 0 || remainingLetters <= 0) {endGame();}
+		$("#guess-input").val("");}
+	
+
+
+	$(document).ready(function() {
+		initializeGame();
+		$("#submit-guess").click(handleGuess);
+		$("#guess-input").on('keypress', function(e) {
+			if (e.which === 13) { handleGuess();}
+		});
+	});
+
+
+    </script>
+	</body>
