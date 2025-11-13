@@ -4,7 +4,7 @@
 
 <head><title>Hangman's game</title>
 
-	<h2>Powered with words and definitions from Merriam-Webster's Learner Dictionary<p></p>
+	<h2>Powered with words and definitions from Merriam-Webster's Learners Dictionary<p></p>
 	<img src="Merriam-Webster_logo.png"></h2>
 
 </head>
@@ -32,11 +32,61 @@
     <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
     
     <script>
-    function pickWord(){
-		var wordsArray=["amazing", "pancake", "language", "source", "browse"];
-		var word = wordsArray[Math.floor(Math.random()*wordsArray.length)];
-		return word;}
+    
+    // -----------------------------------------------------------------------
+    // 1. КОНФИГУРАЦИЯ (API КЛЮЧОВЕ)
+    // -----------------------------------------------------------------------
+    const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
+    // Уточнена е URL-ът за Learner's Dictionary (learnerS/json)
+    const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
+    const RANDOM_WORD_URL = `https://random-word-api.herokuapp.com/word?number=1`; 
 
+    // -----------------------------------------------------------------------
+    // 2. АСИНХРОННА ЛОГИКА ЗА API (ДВУСТЪПКОВ ПРОЦЕС)
+    // -----------------------------------------------------------------------
+    async function fetchRandomWordAndDefinition() {
+        try {
+            // СТЪПКА 1: Извличане на произволна дума от външен API
+            let randomResponse = await fetch(RANDOM_WORD_URL);
+            let randomData = await randomResponse.json();
+            const word = randomData[0].toLowerCase(); 
+
+            // СТЪПКА 2: Извличане на дефиницията от Merriam-Webster
+            let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
+            
+            if (!mwResponse.ok) {
+                // Ако MW API върне грешка (напр. 404), опитваме отново
+                console.error(`MW API HTTP error! status: ${mwResponse.status}`);
+                return fetchRandomWordAndDefinition(); 
+            }
+
+            let mwData = await mwResponse.json();
+            
+            // Проверка за валидна дефиниция (тъй като някои произволни думи може да не са в Learner's Dictionary)
+            if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
+                return {
+                    word: word,
+                    definition: mwData[0].shortdef[0] 
+                };
+            } else {
+                // Ако няма дефиниция, опитваме отново
+                return fetchRandomWordAndDefinition(); 
+            }
+
+        } catch (error) {
+            console.error("Грешка при извличане на дума/дефиниция:", error);
+            // Резервен вариант при мрежова грешка
+            return {
+                word: "error",
+                definition: "API Loading Error. Please check your internet connection or console for details."
+            };
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 3. ФУНКЦИИ ЗА ЛОГИКАТА НА ИГРАТА
+    // -----------------------------------------------------------------------
+    
 	function setupWordsArray(word){
 		var answerArray=[];
 		for(var i = 0; i < word.length; i++){
@@ -48,9 +98,9 @@
 		for (var i = 0; i < word.length; i++){
 			if(guess.toLowerCase() === word[i] && answerArray[i] === "_"){
 				answerArray[i] = guess; correctGuesses++;}}
+		// Добавяме guessed буквата към списъка само ако е грешна
 		if (correctGuesses === 0) {pastGuesses.push(guess.toUpperCase());remainingGuesses--;}
 		return correctGuesses;}
-	
 	
 	function updateDisplay(answerArray, message = "") {
 		$("#word-mask").text(answerArray.join(" "));
@@ -59,15 +109,13 @@
 		if (pastGuesses.length != 0) {$("#feedback-area").text(`Вече опитахте с ${pastGuesses.join(", ")}`);}
 		else {$("#feedback-area").text("Все още нямате въведени букви.");}
 		if (remainingGuesses <= 0 || remainingLetters <= 0) {
-        $("#guess-input, #submit-guess").prop('disabled', true);}}
+            $("#guess-input, #submit-guess").prop('disabled', true);}}
     
-
 	function endGame() {
 		var finalWord = word.toUpperCase();
 		if (remainingLetters === 0) {
 			$("#message-area").html(`<strong>Поздравления! Отговорът е: ${finalWord}</strong>`);}
 		else { $("#message-area").html(`<strong>Опитите свършиха! Думата беше: ${finalWord}</strong>`);}}
-
 
 
 	var word;
@@ -76,39 +124,83 @@
 	var remainingLetters;
 	var pastGuesses = [];
 
-	function initializeGame() {
-		word = pickWord(); 
+    // Приема дума като аргумент от API
+	function initializeGame(newWord) {
+		word = newWord; 
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
 		remainingLetters = word.length;
+		pastGuesses = []; // Нулираме старите опити
 		updateDisplay(answerArray, "Въведете вашата буква.");
 		$("#guess-input, #submit-guess").prop('disabled', false);}
-
-
+    
+    
+    // ⭐ ЛИПСВАЩАТА ФУНКЦИЯ, КОЯТО ПРАВЕШЕ БУТОНА ДА НЕ РАБОТИ
 	function handleGuess() {
 		var guess = $("#guess-input").val().trim().toLowerCase();
+		
+		// 1. Валидация на въведеното
 		if (guess.length !== 1 || !/^[a-z]$/.test(guess)) {
 			updateDisplay(answerArray, "Моля, въведете само една валидна буква.");
 			$("#guess-input").val("");
 			return;}
+        
+        // 2. Проверка за вече въведена буква
+        if (pastGuesses.includes(guess.toUpperCase())) {
+            updateDisplay(answerArray, `Вече опитахте буквата '${guess.toUpperCase()}'. Опитайте друга.`);
+            $("#guess-input").val("");
+            return;
+        }
+
+        // 3. Актуализиране на състоянието
 		var correctGuesses = updateGameState(guess, word, answerArray); 
+		
 		if (correctGuesses > 0) {
 			remainingLetters -= correctGuesses;
 			updateDisplay(answerArray, `Поздравления! Буквата '${guess.toUpperCase()}' е намерена!`);}
 		else {updateDisplay(answerArray, `Грешна буква! Няма буква '${guess.toUpperCase()}' в думата.`);}
+		
+        // 4. Проверка за край
 		if (remainingGuesses <= 0 || remainingLetters <= 0) {endGame();}
+        
+        // 5. Почистване на полето
 		$("#guess-input").val("");}
-	
+    
+    // -----------------------------------------------------------------------
+    // 4. СТАРТИРАНЕ/РЕСТАРТИРАНЕ НА ИГРАТА (ЗА БУТОНА)
+    // -----------------------------------------------------------------------
+    async function startNewGame() {
+        // 1. Деактивираме контролите
+        $("#new-word-button").prop('disabled', true).text('Зареждане...');
+        $("#guess-input, #submit-guess").prop('disabled', true);
+        $("#word-definition").text('... Извличане на дума и дефиниция...');
 
+        // 2. Извикваме асинхронната функция
+        const wordData = await fetchRandomWordAndDefinition();
 
+        // 3. Актуализираме дисплея и инициализираме играта
+        $("#word-definition").text(wordData.definition);
+        initializeGame(wordData.word); 
+
+        // 4. Активираме контролите
+        $("#new-word-button").prop('disabled', false).text('Избери друга дума');
+    }
+    
+	// -----------------------------------------------------------------------
+    // 5. ПРИКАЧВАНЕ НА СЪБИТИЯ (jQuery)
+    // -----------------------------------------------------------------------
 	$(document).ready(function() {
-		initializeGame();
+        // Стартираме играта с API заявка
+		startNewGame(); 
+		
+        // Прикачваме събития
 		$("#submit-guess").click(handleGuess);
 		$("#guess-input").on('keypress', function(e) {
 			if (e.which === 13) { handleGuess();}
 		});
+        $("#new-word-button").click(startNewGame);
 	});
-
-
+    
+	
     </script>
 	</body>
