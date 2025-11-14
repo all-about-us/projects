@@ -33,100 +33,52 @@
     
     <script>
     
-    // -----------------------------------------------------------------------
-    // 1. КОНФИГУРАЦИЯ
-    // -----------------------------------------------------------------------
+    
     const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
+    
     const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
+    const RANDOM_WORD_URL = `https://random-word-api.herokuapp.com/word?number=1`; 
+
     
-    // Нов файл за думите
-    const WORD_LIST_FILE = 'words.txt'; 
-    let WORDS_ARRAY = []; // Тук ще съхраняваме думите от файла
-    
-    
-    // -----------------------------------------------------------------------
-    // 2. ФУНКЦИЯ ЗА ЗАРЕЖДАНЕ НА ДУМИТЕ (НОВА)
-    // -----------------------------------------------------------------------
-    async function fetchWordList() {
+    async function fetchRandomWordAndDefinition() {
         try {
-            // Извличане на съдържанието на локалния текстов файл
-            const response = await fetch(WORD_LIST_FILE);
-            if (!response.ok) {
-                throw new Error('Failed to load word list file from server.');
+            
+            let randomResponse = await fetch(RANDOM_WORD_URL);
+            let randomData = await randomResponse.json();
+            const word = randomData[0].toLowerCase(); 
+
+            
+            let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
+            
+            if (!mwResponse.ok) {
+                
+                console.error(`MW API HTTP error! status: ${mwResponse.status}`);
+                return fetchRandomWordAndDefinition(); 
             }
+
+            let mwData = await mwResponse.json();
             
-            const text = await response.text();
             
-            // Разделяне на текста на думи (по нов ред), филтриране на празни редове и попълване на глобалния масив
-            WORDS_ARRAY = text.split('\n')
-                              .map(word => word.trim().toLowerCase())
-                              .filter(word => word.length > 0 && /^[a-z]+$/.test(word));
-            
-            if (WORDS_ARRAY.length === 0) {
-                 throw new Error("Word list is empty after processing.");
+            if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
+                return {
+                    word: word,
+                    definition: mwData[0].shortdef[0] 
+                };
+            } else {
+                
+                return fetchRandomWordAndDefinition(); 
             }
 
         } catch (error) {
-            console.error("Грешка при зареждане на списъка с думи. Използване на резервен списък:", error);
-            // Резервен списък при грешка на файла
-            WORDS_ARRAY = ["problem", "solution", "example", "hangman", "project"];
+            console.error("Грешка при извличане на дума/дефиниция:", error);
+            
+            return {
+                word: "error",
+                definition: "API Loading Error. Please check your internet connection or console for details."
+            };
         }
     }
 
-
-    // -----------------------------------------------------------------------
-    // 3. ФУНКЦИЯ ЗА API (МОДИФИЦИРАНА)
-    // -----------------------------------------------------------------------
-    async function fetchRandomWordAndDefinition() {
-        
-        // Избиране на произволна дума от локално заредения масив
-        const word = WORDS_ARRAY[Math.floor(Math.random() * WORDS_ARRAY.length)];
-        
-        let attempts = 0;
-        const MAX_ATTEMPTS = 5;
-
-        // Опитваме се да намерим дефиниция за избраната дума
-        while (attempts < MAX_ATTEMPTS) {
-            try {
-                let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
-                
-                if (!mwResponse.ok) {
-                    // Грешка в MW API (напр. 404, 500), но не CORS, тъй като MW работи
-                    console.error(`MW API HTTP error! status: ${mwResponse.status}`);
-                    break; 
-                }
-
-                let mwData = await mwResponse.json();
-                
-                // Проверка за валидна дефиниция
-                if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
-                    return {
-                        word: word,
-                        definition: mwData[0].shortdef[0] 
-                    };
-                } else {
-                    // Думата е намерена, но няма дефиниция (или е много сложна/кратка), опитваме друга дума
-                    attempts++;
-                    continue; // Продължаваме цикъла за друга дума (в случая трябва да излезем и да се рестартира)
-                }
-
-            } catch (error) {
-                console.error("Грешка при извличане на дефиниция:", error);
-                break;
-            }
-        }
-        
-        // Връщане на резервен вариант при грешка или изчерпани опити
-        return {
-            word: word, // Връщаме последната дума, за която не намерихме дефиниция
-            definition: "Definition not found or API error. Play with the word itself."
-        };
-    }
-
-    
-    // -----------------------------------------------------------------------
-    // 4. ОСТАНАЛАТА ЛОГИКА (БЕЗ ПРОМЕНИ)
-    // -----------------------------------------------------------------------
     
 	function setupWordsArray(word){
 		var answerArray=[];
@@ -216,14 +168,9 @@
     }
     
 	
-	$(document).ready(async function() {
-        // 1. Зареждаме списъка с думи преди да започнем играта
-        await fetchWordList(); 
-        
-        // 2. Стартираме играта с първата дума
+	$(document).ready(function() {
 		startNewGame(); 
 		
-        // 3. Прикачваме събития
 		$("#submit-guess").click(handleGuess);
 		$("#guess-input").on('keypress', function(e) {
 			if (e.which === 13) { handleGuess();}
@@ -233,5 +180,8 @@
     
 	
     </script>
+
 	</body>
+
+
 
