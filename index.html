@@ -34,51 +34,83 @@
     <script>
     
     
-    const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
+    const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`;
     
     const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
-    
-    async function fetchRandomWordAndDefinition() {
+
+	const WORD_LIST_FILE = 'words.txt'; 
+    let WORDS_ARRAY = []; // Тук ще съхраняваме думите от файла
+		
+	async function fetchWordList() {
         try {
-            
-            let randomResponse = await fetch(`${MW_DICTIONARY_URL}random?key=${MW_API_KEY}`);
-            let randomData = await randomResponse.json();
-            const word = randomData[0]; 
-
-            var word = ["amazing", "pancake", "language", "source", "browse"][Math.floor(Math.random()*5];
-			
-            let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
-            
-            if (!mwResponse.ok) {
-                
-                console.error(`MW API HTTP error! status: ${mwResponse.status}`);
-                return fetchRandomWordAndDefinition(); 
+            // Извличане на съдържанието на локалния текстов файл
+            const response = await fetch(WORD_LIST_FILE);
+            if (!response.ok) {
+                throw new Error('Failed to load word list file from server.');
             }
-
-            let mwData = await mwResponse.json();
             
+            const text = await response.text();
             
-            if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
-                return {
-                    word: word.toLowerCase(),
-                    definition: mwData[0].shortdef[0] 
-                };
-            } else {
-                
-                return fetchRandomWordAndDefinition(); 
+            // Разделяне на текста на думи (по нов ред), филтриране на празни редове и попълване на глобалния масив
+            WORDS_ARRAY = text.split('\n')
+                              .map(word => word.trim().toLowerCase())
+                              .filter(word => word.length > 0 && /^[a-z]+$/.test(word));
+            
+            if (WORDS_ARRAY.length === 0) {
+                 throw new Error("Word list is empty after processing.");
             }
 
         } catch (error) {
-            console.error("Грешка при извличане на дума/дефиниция:", error);
-            
-            return {
-                word: "error",
-                definition: "API Loading Error. Please check your internet connection or console for details."
-            };
+            console.error("Грешка при зареждане на списъка с думи. Използване на резервен списък:", error);
+            // Резервен списък при грешка на файла
+            WORDS_ARRAY = ["problem", "solution", "example", "hangman", "project"];
         }
     }
+	
+    async function fetchRandomWordAndDefinition() {
+        const word = WORDS_ARRAY[Math.floor(Math.random() * WORDS_ARRAY.length)];
+        
+        let attempts = 0;
+        const MAX_ATTEMPTS = 5;
 
-    
+        // Опитваме се да намерим дефиниция за избраната дума
+        while (attempts < MAX_ATTEMPTS) {
+            try {
+                let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
+                
+                if (!mwResponse.ok) {
+                    // Грешка в MW API (напр. 404, 500), но не CORS, тъй като MW работи
+                    console.error(`MW API HTTP error! status: ${mwResponse.status}`);
+                    break; 
+                }
+
+                let mwData = await mwResponse.json();
+                
+                // Проверка за валидна дефиниция
+                if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
+                    return {
+                        word: word,
+                        definition: mwData[0].shortdef[0] 
+                    };
+                } else {
+                    // Думата е намерена, но няма дефиниция (или е много сложна/кратка), опитваме друга дума
+                    attempts++;
+                    continue; // Продължаваме цикъла за друга дума (в случая трябва да излезем и да се рестартира)
+                }
+
+            } catch (error) {
+                console.error("Грешка при извличане на дефиниция:", error);
+                break;
+            }
+        }
+        
+        // Връщане на резервен вариант при грешка или изчерпани опити
+        return {
+            word: word, // Връщаме последната дума, за която не намерихме дефиниция
+            definition: "Definition not found or API error. Play with the word itself."
+        };
+    }
+
 	function setupWordsArray(word){
 		var answerArray=[];
 		for(var i = 0; i < word.length; i++){
@@ -181,6 +213,7 @@
     </script>
 
 	</body>
+
 
 
 
