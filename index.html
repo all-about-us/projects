@@ -189,7 +189,7 @@
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
         $("#word-definition").text('... Извличане на дума и дефиниция...');
-
+		let word = await fetchWordList();
         const wordData = await fetchRandomWordAndDefinition();
 
         $("#word-definition").text(wordData.definition);
@@ -200,7 +200,7 @@
     
 	
 	$(document).ready(async function() {
-		await fetchWordList();
+		
 		
 		startNewGame(); 
 		
@@ -215,6 +215,7 @@
     </script>
 
 	</body>
+
 
 
 
