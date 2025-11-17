@@ -37,8 +37,6 @@
     const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
     
     const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
-    //const RANDOM_WORD_URL = `https://random-word-api.herokuapp.com/word?number=1`; 
-
     
     async function fetchRandomWordAndDefinition() {
         try {
@@ -47,7 +45,8 @@
             let randomData = await randomResponse.json();
             const word = randomData[0]; 
 
-            
+            var word = ["amazing", "pancake", "language", "source", "browse"][Math.floor(Math.random()*5];
+			
             let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
             
             if (!mwResponse.ok) {
@@ -61,7 +60,7 @@
             
             if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
                 return {
-                    word: word,
+                    word: word.toLowerCase(),
                     definition: mwData[0].shortdef[0] 
                 };
             } else {
@@ -122,7 +121,7 @@
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
 		remainingLetters = word.length;
-		pastGuesses = []; // Нулираме старите опити
+		pastGuesses = [];
 		updateDisplay(answerArray, "Въведете вашата буква.");
 		$("#guess-input, #submit-guess").prop('disabled', false);}
     
@@ -182,6 +181,7 @@
     </script>
 
 	</body>
+
 
 
 
