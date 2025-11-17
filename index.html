@@ -37,13 +37,13 @@
     const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
     
     const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
-    const RANDOM_WORD_URL = `https://random-word-api.herokuapp.com/word?number=1`; 
+    //const RANDOM_WORD_URL = `https://random-word-api.herokuapp.com/word?number=1`; 
 
     
     async function fetchRandomWordAndDefinition() {
         try {
             
-            let randomResponse = await fetch(RANDOM_WORD_URL);
+            let randomResponse = await fetch(`${MW_DICTIONARY_URL}random?key=${MW_API_KEY}`);
             let randomData = await randomResponse.json();
             const word = randomData[0].toLowerCase(); 
 
@@ -182,3 +182,4 @@
     </script>
 
 	</body>
+
