@@ -110,9 +110,9 @@
             }
         }
         
-        // Връщане на резервен вариант при грешка или изчерпани опити
+        
         return {
-            word: "error", // Връщаме последната дума, за която не намерихме дефиниция
+            word: "error", 
             definition: `ERROR: Failed to find a valid word definition after ${MAX_ATTEMPTS} attempts.`
         };
     }
@@ -196,6 +196,7 @@
     
     
     async function startNewGame() {
+		await fecthWordList();
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
         $("#word-definition").text('... Извличане на дума и дефиниция...');
@@ -217,8 +218,8 @@
     }
     
 	
-	$(document).ready(async function() {
-		await fetchWordList();
+	$(document).ready(function() {
+		//await fetchWordList();
 		
 		startNewGame(); 
 		
@@ -233,6 +234,7 @@
     </script>
 
 	</body>
+
 
 
 
