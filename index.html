@@ -45,7 +45,7 @@
             
             let randomResponse = await fetch(`${MW_DICTIONARY_URL}random?key=${MW_API_KEY}`);
             let randomData = await randomResponse.json();
-            const word = randomData[0].toLowerCase(); 
+            const word = randomData[0]; 
 
             
             let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
@@ -182,4 +182,5 @@
     </script>
 
 	</body>
+
 
