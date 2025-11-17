@@ -201,7 +201,7 @@
         $("#guess-input, #submit-guess").prop('disabled', true);
         $("#word-definition").text('... Извличане на дума и дефиниция...');
 		
-        const wordData = await fetchRandomWordAndDefinition();
+        //const wordData = await fetchRandomWordAndDefinition();
 
         $("#word-definition").text(wordData.definition);
 
@@ -234,6 +234,7 @@
     </script>
 
 	</body>
+
 
 
 
