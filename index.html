@@ -39,11 +39,11 @@
     const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
 
 	const WORD_LIST_FILE = 'words.txt'; 
-    let WORDS_ARRAY = []; // Тук ще съхраняваме думите от файла
+    let WORDS_ARRAY = []; 
 		
 	async function fetchWordList() {
         try {
-            // Извличане на съдържанието на локалния текстов файл
+            
             const response = await fetch(WORD_LIST_FILE);
             if (!response.ok) {
                 throw new Error('Failed to load word list file from server.');
@@ -51,7 +51,7 @@
             
             const text = await response.text();
             
-            // Разделяне на текста на думи (по нов ред), филтриране на празни редове и попълване на глобалния масив
+
             WORDS_ARRAY = text.split('\n')
                               .map(word => word.trim().toLowerCase())
                               .filter(word => word.length > 0 && /^[a-z]+$/.test(word));
@@ -59,43 +59,49 @@
             if (WORDS_ARRAY.length === 0) {
                  throw new Error("Word list is empty after processing.");
             }
-
+			console.log(`Word list loaded successfully. Total words: ${WORDS_ARRAY.length}`);
         } catch (error) {
             console.error("Грешка при зареждане на списъка с думи. Използване на резервен списък:", error);
-            // Резервен списък при грешка на файла
+            
             WORDS_ARRAY = ["problem", "solution", "example", "hangman", "project"];
         }
     }
 	
     async function fetchRandomWordAndDefinition() {
-        const word = WORDS_ARRAY[Math.floor(Math.random() * WORDS_ARRAY.length)];
+
+		if (WORDS_ARRAY.length === 0) {
+            return { word: "loading", definition: "Error: Word list is empty." };
+        }
+        
         
         let attempts = 0;
         const MAX_ATTEMPTS = 5;
 
         // Опитваме се да намерим дефиниция за избраната дума
         while (attempts < MAX_ATTEMPTS) {
+			attempts++;
+			const word = WORDS_ARRAY[Math.floor(Math.random() * WORDS_ARRAY.length)];
             try {
                 let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
                 
                 if (!mwResponse.ok) {
-                    // Грешка в MW API (напр. 404, 500), но не CORS, тъй като MW работи
+                    
                     console.error(`MW API HTTP error! status: ${mwResponse.status}`);
                     break; 
                 }
 
                 let mwData = await mwResponse.json();
                 
-                // Проверка за валидна дефиниция
+                
                 if (mwData && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
                     return {
                         word: word,
                         definition: mwData[0].shortdef[0] 
                     };
                 } else {
-                    // Думата е намерена, но няма дефиниция (или е много сложна/кратка), опитваме друга дума
+                    console.warn(`Definition not found or word not recognized by MW Learner's Dictionary: ${word}. Retrying...`);
                     attempts++;
-                    continue; // Продължаваме цикъла за друга дума (в случая трябва да излезем и да се рестартира)
+                    continue; 
                 }
 
             } catch (error) {
@@ -106,8 +112,8 @@
         
         // Връщане на резервен вариант при грешка или изчерпани опити
         return {
-            word: word, // Връщаме последната дума, за която не намерихме дефиниция
-            definition: "Definition not found or API error. Play with the word itself."
+            word: "error", // Връщаме последната дума, за която не намерихме дефиниция
+            definition: `ERROR: Failed to find a valid word definition after ${MAX_ATTEMPTS} attempts.`
         };
     }
 
@@ -148,7 +154,11 @@
 	var remainingLetters;
 	var pastGuesses = [];
 
-	function initializeGame(newWord) {
+	function initializeGame(newWord){
+		if (newWord === "error" || newWord === "loading") {
+            word = "error";
+            return;
+        }
 		word = newWord; 
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
@@ -189,18 +199,26 @@
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
         $("#word-definition").text('... Извличане на дума и дефиниция...');
-		let word = await fetchWordList();
+		
         const wordData = await fetchRandomWordAndDefinition();
 
         $("#word-definition").text(wordData.definition);
-        initializeGame(wordData.word); 
+
+		if (wordData.word === "error" || wordData.word === "loading") {
+             $("#word-mask").text("");
+             $("#guesses-left").text("");
+             $("#message-area").text("Възникна критична грешка при зареждането. Моля, опитайте отново.");
+        } else {
+             
+             initializeGame(wordData.word); 
+        }
 
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
     }
     
 	
 	$(document).ready(async function() {
-		
+		await fetchWordList();
 		
 		startNewGame(); 
 		
@@ -215,6 +233,7 @@
     </script>
 
 	</body>
+
 
 
 
