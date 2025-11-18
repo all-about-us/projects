@@ -31,52 +31,132 @@
 
     <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
     
-
-    <script>
-    
-    const API_KEY = "62ef63d6-1b72-4711-867f-2f2b6152b0da"; 
+<script>
     
     
-    const DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
-
+    const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
+    const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
     
-    async function fetchRandomWordAndDefinition() {
+   
+    const WORD_LIST_FILE = 'words.txt'; 
+    let WORDS_ARRAY = []; 
+    
+    
+    // -----------------------------------------------------------------------
+    // 1. ФУНКЦИЯ ЗА ЗАРЕЖДАНЕ НА ДУМИТЕ (ОСТАВА НЕПРОМЕНЕНА)
+    // -----------------------------------------------------------------------
+    async function fetchWordList() {
         try {
             
-            var word = ["amazing", "pancake", "language", "source", "browse"][Math.floor(Math.random() * 5)];
-
-            
-            let response = await fetch(`${DICTIONARY_URL}${word}?key=${API_KEY}`);
-            
+            const response = await fetch(WORD_LIST_FILE);
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                throw new Error('Failed to load word list file from server.');
             }
-
-            let data = await response.json();
+            
+            const text = await response.text();
             
             
-            if (data && data[0] && data[0].shortdef && data[0].shortdef.length > 0) {
-                return {
-                    word: word.toLowerCase(),
-                    
-                    definition: data[0].shortdef[0] 
-                };
-            } else {
-                
-                return fetchRandomWordAndDefinition(); 
+            WORDS_ARRAY = text.split('\n')
+                              .map(word => word.trim().toLowerCase())
+                              .filter(word => word.length > 0 && /^[a-z]+$/.test(word));
+            
+            if (WORDS_ARRAY.length === 0) {
+                 throw new Error("Word list is empty after processing.");
             }
+            
+            console.log(`Word list loaded successfully. Total words: ${WORDS_ARRAY.length}`);
 
         } catch (error) {
-            console.error("Грешка при извличане на дума/дефиниция:", error);
-           
-            return {
-                word: "error",
-                definition: "API Loading Error. Please try again or check the API key."
-            };
+            console.error("Грешка при зареждане на списъка с думи. Използване на резервен списък:", error);
+            WORDS_ARRAY = ["problem", "solution", "example", "hangman", "project"];
         }
     }
 
 
+    // -----------------------------------------------------------------------
+    // 2. ФУНКЦИЯ: Избира произволна дума от масива (НОВА)
+    // -----------------------------------------------------------------------
+    function selectRandomWord() {
+        if (WORDS_ARRAY.length === 0) {
+            console.error("WORDS_ARRAY is empty. Returning fallback word.");
+            return "error"; // Връщаме "error", за да се обработи като грешка
+        }
+        
+        // Връщаме произволна дума от масива
+        return WORDS_ARRAY[Math.floor(Math.random() * WORDS_ARRAY.length)];
+    }
+
+    
+    // -----------------------------------------------------------------------
+    // 3. ФУНКЦИЯ: Извлича дефиниция за подадената дума (НОВА)
+    // -----------------------------------------------------------------------
+    async function fetchDefinition(word) {
+        if (!word || word === "error") {
+            return { success: false, definition: "Invalid word received." };
+        }
+        
+        try {
+            let mwResponse = await fetch(`${MW_DICTIONARY_URL}${word}?key=${MW_API_KEY}`);
+            
+            if (!mwResponse.ok) {
+                console.error(`MW API HTTP error! status: ${mwResponse.status} for word: ${word}`);
+                return { success: false, definition: "API communication error." };
+            }
+
+            let mwData = await mwResponse.json();
+            
+            // Проверка за валидна дефиниция
+            if (Array.isArray(mwData) && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
+                return {
+                    success: true,
+                    word: word,
+                    definition: mwData[0].shortdef[0] 
+                };
+            } else {
+                console.warn(`Definition not found for word: ${word}.`);
+                return { success: false, definition: "Definition not found in dictionary." };
+            }
+
+        } catch (error) {
+            console.error("Error fetching definition:", error);
+            return { success: false, definition: "Network or protocol error." };
+        }
+    }
+
+
+    // -----------------------------------------------------------------------
+    // 4. КООРДИНАЦИОННА ФУНКЦИЯ (ПРЕИМЕНУВАНА)
+    // -----------------------------------------------------------------------
+    async function fetchWordAndDefinition() {
+        const MAX_ATTEMPTS = 5;
+
+        for (let attempts = 1; attempts <= MAX_ATTEMPTS; attempts++) {
+            
+            // Стъпка 1: Избираме произволна дума
+            const word = selectRandomWord();
+            
+            if (word === "error") break; // Прекратяваме, ако списъкът е празен
+
+            // Стъпка 2: Извличаме дефиницията за тази дума
+            const result = await fetchDefinition(word);
+            
+            if (result.success) {
+                return { word: result.word, definition: result.definition }; // Успех
+            }
+            // Ако не е success, цикълът продължава с нова дума
+        }
+        
+        // Връщаме съобщение за грешка, ако всички опити се провалят
+        return {
+            word: "error", 
+            definition: `ERROR: Failed to find a valid word definition after ${MAX_ATTEMPTS} attempts.`
+        };
+    }
+    
+    
+    // -----------------------------------------------------------------------
+    // 5. ОСТАНАЛАТА ЛОГИКА (С ЛЕКИ КООРДИНАЦИОННИ ПРОМЕНИ)
+    // -----------------------------------------------------------------------
     
 	function setupWordsArray(word){
 		var answerArray=[];
@@ -89,6 +169,7 @@
 		for (var i = 0; i < word.length; i++){
 			if(guess.toLowerCase() === word[i] && answerArray[i] === "_"){
 				answerArray[i] = guess; correctGuesses++;}}
+		
 		if (correctGuesses === 0) {pastGuesses.push(guess.toUpperCase());remainingGuesses--;}
 		return correctGuesses;}
 	
@@ -97,9 +178,9 @@
 		$("#guesses-left").text(`Имате ${remainingGuesses} опита.`);
 		$("#message-area").text(message);
 		if (pastGuesses.length != 0) {$("#feedback-area").text(`Вече опитахте с ${pastGuesses.join(", ")}`);}
-		else {$("#feedback-area").text("Все още нямате въведени букви.");}
-		if (remainingGuesses <= 0 || remainingLetters <= 0) {
-        $("#guess-input, #submit-guess").prop('disabled', true);}}
+		else {$("#feedback-area").text("");}
+		if (remainingGuesses <= 0 || remainingLetters <= 0) {$("#guesses-left").text(``);
+            $("#guess-input, #submit-guess").prop('disabled', true);}}
     
 	function endGame() {
 		var finalWord = word.toUpperCase();
@@ -114,36 +195,29 @@
 	var remainingLetters;
 	var pastGuesses = [];
 
-    
 	function initializeGame(newWord) {
+        if (newWord === "error") {
+            word = "error";
+            return;
+        }
+
 		word = newWord; 
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
 		remainingLetters = word.length;
-		pastGuesses = []; // Нулираме старите опити
+		pastGuesses = []; 
 		updateDisplay(answerArray, "Въведете вашата буква.");
 		$("#guess-input, #submit-guess").prop('disabled', false);}
-
     
-    async function startNewGame() {
-        // 1. Деактивираме контролите
-        $("#new-word-button").prop('disabled', true).text('Зареждане...');
-        $("#guess-input, #submit-guess").prop('disabled', true);
-        $("#word-definition").text('... Извличане на дума и дефиниция...');
-
-        
-        const wordData = await fetchRandomWordAndDefinition();
-
-        
-        $("#word-definition").text(wordData.definition);
-        initializeGame(wordData.word); 
-
-        
-        $("#new-word-button").prop('disabled', false).text('Избери друга дума');
-    }
     
 	function handleGuess() {
 		var guess = $("#guess-input").val().trim().toLowerCase();
+        
+        if (word === "error") {
+             updateDisplay([], "Първо рестартирайте играта.");
+             $("#guess-input").val("");
+             return;
+        }
 		
 		
 		if (guess.length !== 1 || !/^[a-z]$/.test(guess)) {
@@ -165,21 +239,47 @@
 		else {updateDisplay(answerArray, `Грешна буква! Няма буква '${guess.toUpperCase()}' в думата.`);}
 		
 		if (remainingGuesses <= 0 || remainingLetters <= 0) {endGame();}
-		$("#guess-input").val("");}
-	
-    
-	$(document).ready(async function() {
-        startNewGame(); 
-		
         
+		$("#guess-input").val("");}
+    
+    
+    async function startNewGame() {
+        $("#new-word-button").prop('disabled', true).text('Зареждане...');
+        $("#guess-input, #submit-guess").prop('disabled', true);
+        $("#word-definition").text('... Извличане на дума и дефиниция...');
+
+        // Използваме новата координираща функция
+        const wordData = await fetchWordAndDefinition();
+
+        $("#word-definition").text(wordData.definition);
+        
+        if (wordData.word === "error") {
+             $("#word-mask").text("");
+             $("#guesses-left").text("");
+             $("#message-area").text("Възникна критична грешка при зареждането. Моля, опитайте отново.");
+        } else {
+             initializeGame(wordData.word); 
+        }
+
+        $("#new-word-button").prop('disabled', false).text('Избери друга дума');
+    }
+    
+	
+	$(document).ready(async function() {
+        await fetchWordList(); 
+		startNewGame(); 
+		
 		$("#submit-guess").click(handleGuess);
 		$("#guess-input").on('keypress', function(e) {
 			if (e.which === 13) { handleGuess();}
 		});
         $("#new-word-button").click(startNewGame);
 	});
-    </script>
+    
+	
+</script>
 	</body>
+
 
 
 
