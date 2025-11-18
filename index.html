@@ -34,36 +34,34 @@
     <script>
     
     
+	
 	async function loadWordsFromFile() {
 		try {
 			const response = await fetch('words.txt');
-			if (!response.ok) {
-				throw new Error('Неуспешно зареждане на файла.');
-			}
-
+			
 			const text = await response.text();
-			// Разделяме текста на думи по новия ред (\n)
+			
 			const wordsArray = text.split('\n');
 
-			// Филтрираме празните редове и премахваме излишните интервали
-			const filteredWords = wordsArray
+			
+			filteredWords = wordsArray
 				.map(word => word.trim())
 				.filter(word => word.length > 0);
 
-			return filteredWords;
+			
 		} catch (error) {
 			console.error("Грешка при зареждане на думите:", error);
-			// Резервен вариант в случай на грешка
-			return ["javascript", "hangman"];
+			
+			filteredWords=["computer", "script", "coding", "async"];
 		}
 	}
 	
-    function pickWord(filteredWords){
-	var filteredWords=await loadWordsFromFile();
-	if (filteredWords.length > 0){
-	var word = filteredWords[Math.floor(Math.random()*filteredWords.length)];}
-	else {console.error("Няма заредени думи за играта.");}
-	return word;}
+    function pickWord(){
+		if (filteredWords.length === 0) {
+        console.error("No words loaded. Returning fallback 'error'.");
+        return "error"; 
+		}
+		return filteredWords[Math.floor(Math.random() * filteredWords.length)];}
 
     
 	function setupWordsArray(word){
@@ -143,8 +141,15 @@
     async function startNewGame() {
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
-		var word = pickWord(filteredWords);
-        initializeGame(word); 
+		$("#word-definition").text('... Извличане на дума...');
+		const word = pickWord();
+        if (word === "error") {
+			$("#word-definition").text("Critical Error: Word list is empty.");
+		} else {
+			
+			$("#word-definition").text(`Дума от ${word.length} букви.`);
+			initializeGame(word); 
+		} 
 
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
     }
