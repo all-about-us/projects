@@ -33,7 +33,12 @@
     
     <script>
     
-    
+    let filteredWords = [];
+	var word;
+	var answerArray;
+	var remainingGuesses;
+	var remainingLetters;
+	var pastGuesses = [];
 	
 	async function loadWordsFromFile() {
 		try {
@@ -58,8 +63,8 @@
 	
     function pickWord(){
 		if (filteredWords.length === 0) {
-        console.error("No words loaded. Returning fallback 'error'.");
-        return "error"; 
+			console.error("No words loaded. Returning fallback 'error'.");
+        return "fallback"; 
 		}
 		return filteredWords[Math.floor(Math.random() * filteredWords.length)];}
 
@@ -95,14 +100,14 @@
 		else { $("#message-area").html(`<strong>Опитите свършиха! Думата беше: ${finalWord}</strong>`);}}
 
 
-	var word;
-	var answerArray;
-	var remainingGuesses;
-	var remainingLetters;
-	var pastGuesses = [];
+	
 
-	function initializeGame(word) {
-		
+	function initializeGame(newWord) {
+		if (newWord === "fallback" || newWord === "error") {
+            word = "error";
+            return;
+        }
+		word=newWord;
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
 		remainingLetters = word.length;
@@ -114,6 +119,11 @@
 	function handleGuess() {
 		var guess = $("#guess-input").val().trim().toLowerCase();
 		
+		if (word === "error") {
+             updateDisplay([], "Първо рестартирайте играта.");
+             $("#guess-input").val("");
+             return;
+        }
 		
 		if (guess.length !== 1 || !/^[a-z]$/.test(guess)) {
 			updateDisplay(answerArray, "Моля, въведете само една валидна буква.");
@@ -141,14 +151,14 @@
     async function startNewGame() {
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
-		$("#word-definition").text('... Извличане на дума...');
+		$("#word-definition").text('');
 		const word = pickWord();
-        if (word === "error") {
-			$("#word-definition").text("Critical Error: Word list is empty.");
+        if (word === "fallback" || word === "error") {
+			$("#word-mask").text("ГРЕШКА");
+			$("#message-area").text("Списъкът с думи не е зареден. Проверете конзолата.");
 		} else {
-			
-			$("#word-definition").text(`Дума от ${word.length} букви.`);
 			initializeGame(word); 
+			$("#word-definition").text(`Дума от ${word.length} букви.`);
 		} 
 
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
