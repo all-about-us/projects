@@ -31,37 +31,63 @@
 
     <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
     
-    <script>
-    
-    
-    <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
-    
 <script>
     
     // Глобални променливи
+    let filteredWords = []; 
     var word;
     var answerArray;
 	var remainingGuesses;
 	var remainingLetters;
 	var pastGuesses = [];
 
+    const WORD_LIST_FILE = 'words.txt'; 
+
+    // ⭐ НОВИ КОНСТАНТИ ЗА API
+    const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
+    const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
+    
+    
     // -----------------------------------------------------------------------
-    // 1. СИНХРОННА ФУНКЦИЯ: Избира дума от твърдо кодиран масив
+    // 1. АСИНХРОННА ФУНКЦИЯ: Зарежда думите от файла, ако масивът е празен
+    // -----------------------------------------------------------------------
+    async function fetchWordList() {
+        if (filteredWords.length > 0) {
+            return; 
+        }
+
+        try {
+            const response = await fetch(WORD_LIST_FILE);
+            if (!response.ok) {
+                throw new Error(`HTTP грешка: ${response.status} при зареждане на ${WORD_LIST_FILE}`);
+            }
+            const text = await response.text();
+            
+            filteredWords = text.split('\n')
+                               .map(w => w.trim().toLowerCase())
+                               .filter(w => w.length > 0 && /^[a-z]+$/.test(w));
+            
+        } catch (error) {
+            console.error("Грешка при зареждане. Използване на резервен списък:", error);
+            filteredWords = ["computer", "script", "coding", "async", "promise"];
+        }
+    }
+
+
+    // -----------------------------------------------------------------------
+    // 2. СИНХРОННА ФУНКЦИЯ: Избира дума от масива
     // -----------------------------------------------------------------------
     function pickWord() {
-        // Твърдо кодиран списък с думи за да работи веднага
-        const wordsArray = ["amazing", "pancake", "language", "source", "browse", "computer", "script", "coding"];
-        
-        if (wordsArray.length === 0) {
-            console.error("Word list is empty.");
+        if (filteredWords.length === 0) {
+            console.error("No words loaded. Returning fallback 'error'.");
             return "error"; 
         }
-        return wordsArray[Math.floor(Math.random() * wordsArray.length)];
+        return filteredWords[Math.floor(Math.random() * filteredWords.length)];
     }
 
     
     // -----------------------------------------------------------------------
-    // 2. ФУНКЦИИ ЗА ЛОГИКАТА НА ИГРАТА (Непроменени)
+    // 3. ФУНКЦИИ ЗА ЛОГИКАТА НА ИГРАТА (непроменени)
     // -----------------------------------------------------------------------
 	function setupWordsArray(word){
 		var answerArray=[];
@@ -143,40 +169,72 @@
     
     
     // -----------------------------------------------------------------------
-    // 3. ГЛАВНА ФУНКЦИЯ: startNewGame() (СИНХРОННА)
+    // 4. ГЛАВНА ФУНКЦИЯ: startNewGame() (С API ЛОГИКА)
     // -----------------------------------------------------------------------
-    function startNewGame() {
-        // UI: Деактивираме контролите
+    async function startNewGame() {
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
-        $("#word-definition").text('... Извличане на дума...');
+        $("#word-definition").text('... Извличане на дума и дефиниция...');
 
-        // Избираме дума (СИНХРОННО)
-        const newWord = pickWord(); 
+        // 1. ИЗЧАКВАМЕ зареждането на списъка
+        await fetchWordList(); 
 
-        if (newWord === "error") {
-            $("#word-mask").text("ГРЕШКА");
-            $("#message-area").text("Списъкът с думи е празен.");
+        const MAX_ATTEMPTS = 5;
+        let selectedWord = "error";
+        let definitionText = "Неуспешно извличане на дефиниция след 5 опита.";
+
+        // Цикъл за повторен опит, ако API не върне дефиниция за думата
+        for (let attempts = 1; attempts <= MAX_ATTEMPTS; attempts++) {
+            
+            selectedWord = pickWord(); // Избираме дума
+            if (selectedWord === "error") break;
+
+            try {
+                // 2. АСИНХРОННА API ЗАЯВКА
+                let mwResponse = await fetch(`${MW_DICTIONARY_URL}${selectedWord}?key=${MW_API_KEY}`);
+                
+                if (!mwResponse.ok) {
+                    throw new Error(`HTTP Error! Status: ${mwResponse.status}`);
+                }
+
+                let mwData = await mwResponse.json();
+                
+                // 3. Проверка на резултата и извличане на дефиницията
+                if (Array.isArray(mwData) && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
+                    definitionText = mwData[0].shortdef[0];
+                    break; // Успех! Излизаме от цикъла
+                } 
+
+            } catch (error) {
+                console.error("Error fetching definition:", error);
+            }
+        } 
+
+        // 4. Актуализация на UI
+        $("#word-definition").text(definitionText);
+        
+        if (definitionText.startsWith("Неуспешно")) {
+             $("#word-mask").text("ГРЕШКА");
+             $("#message-area").text(definitionText);
         } else {
-            // Инициализираме играта и показваме информация
-            initializeGame(newWord); 
-            // Показваме дължината на думата на мястото на дефиницията
-            $("#word-definition").text(`Дума от ${newWord.length} букви.`);
+            // Успех
+            initializeGame(selectedWord); 
         }
 
-        // UI: Активираме бутона
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
+        // Активираме инпута само при успех
+        if (!definitionText.startsWith("Неуспешно")) {
+            $("#guess-input, #submit-guess").prop('disabled', false); 
+        }
     }
     
 	
 	// -----------------------------------------------------------------------
-    // 4. ИНИЦИАЛИЗАЦИЯ (document.ready) (СИНХРОННА)
+    // 5. ИНИЦИАЛИЗАЦИЯ (document.ready) (СИНХРОННА)
     // -----------------------------------------------------------------------
 	$(document).ready(function() {
-        // Стартираме играта веднага
 		startNewGame(); 
 		
-        // Прикачваме събития
 		$("#submit-guess").click(handleGuess);
 		$("#guess-input").on('keypress', function(e) {
 			if (e.which === 13) { handleGuess();}
@@ -186,9 +244,6 @@
     
 	
 </script>
-    
-	
-    </script>
 
 	</body>
 
