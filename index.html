@@ -33,42 +33,36 @@
     
     <script>
     
-    let filteredWords = [];
-	var word;
-	var answerArray;
+    
+    <script src="https://code.jquery.com/jquery-2.1.0.js"></script>
+    
+<script>
+    
+    // Глобални променливи
+    var word;
+    var answerArray;
 	var remainingGuesses;
 	var remainingLetters;
 	var pastGuesses = [];
-	
-	async function loadWordsFromFile() {
-		try {
-			const response = await fetch('words.txt');
-			
-			const text = await response.text();
-			
-			const wordsArray = text.split('\n');
 
-			
-			filteredWords = wordsArray
-				.map(word => word.trim())
-				.filter(word => word.length > 0);
-
-			
-		} catch (error) {
-			console.error("Грешка при зареждане на думите:", error);
-			
-			filteredWords=["computer", "script", "coding", "async"];
-		}
-	}
-	
-    function pickWord(){
-		if (filteredWords.length === 0) {
-			console.error("No words loaded. Returning fallback 'error'.");
-        return "fallback"; 
-		}
-		return filteredWords[Math.floor(Math.random() * filteredWords.length)];}
+    // -----------------------------------------------------------------------
+    // 1. СИНХРОННА ФУНКЦИЯ: Избира дума от твърдо кодиран масив
+    // -----------------------------------------------------------------------
+    function pickWord() {
+        // Твърдо кодиран списък с думи за да работи веднага
+        const wordsArray = ["amazing", "pancake", "language", "source", "browse", "computer", "script", "coding"];
+        
+        if (wordsArray.length === 0) {
+            console.error("Word list is empty.");
+            return "error"; 
+        }
+        return wordsArray[Math.floor(Math.random() * wordsArray.length)];
+    }
 
     
+    // -----------------------------------------------------------------------
+    // 2. ФУНКЦИИ ЗА ЛОГИКАТА НА ИГРАТА (Непроменени)
+    // -----------------------------------------------------------------------
 	function setupWordsArray(word){
 		var answerArray=[];
 		for(var i = 0; i < word.length; i++){
@@ -100,14 +94,13 @@
 		else { $("#message-area").html(`<strong>Опитите свършиха! Думата беше: ${finalWord}</strong>`);}}
 
 
-	
-
 	function initializeGame(newWord) {
-		if (newWord === "fallback" || newWord === "error") {
+        if (newWord === "error") {
             word = "error";
             return;
         }
-		word=newWord;
+
+		word = newWord; 
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
 		remainingLetters = word.length;
@@ -118,12 +111,13 @@
     
 	function handleGuess() {
 		var guess = $("#guess-input").val().trim().toLowerCase();
-		
-		if (word === "error") {
+        
+        if (word === "error") {
              updateDisplay([], "Първо рестартирайте играта.");
              $("#guess-input").val("");
              return;
         }
+		
 		
 		if (guess.length !== 1 || !/^[a-z]$/.test(guess)) {
 			updateDisplay(answerArray, "Моля, въведете само една валидна буква.");
@@ -148,33 +142,50 @@
 		$("#guess-input").val("");}
     
     
-    async function startNewGame() {
+    // -----------------------------------------------------------------------
+    // 3. ГЛАВНА ФУНКЦИЯ: startNewGame() (СИНХРОННА)
+    // -----------------------------------------------------------------------
+    function startNewGame() {
+        // UI: Деактивираме контролите
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
-		$("#word-definition").text('');
-		const word = pickWord();
-        if (word === "fallback" || word === "error") {
-			$("#word-mask").text("ГРЕШКА");
-			$("#message-area").text("Списъкът с думи не е зареден. Проверете конзолата.");
-		} else {
-			initializeGame(word); 
-			$("#word-definition").text(`Дума от ${word.length} букви.`);
-		} 
+        $("#word-definition").text('... Извличане на дума...');
 
+        // Избираме дума (СИНХРОННО)
+        const newWord = pickWord(); 
+
+        if (newWord === "error") {
+            $("#word-mask").text("ГРЕШКА");
+            $("#message-area").text("Списъкът с думи е празен.");
+        } else {
+            // Инициализираме играта и показваме информация
+            initializeGame(newWord); 
+            // Показваме дължината на думата на мястото на дефиницията
+            $("#word-definition").text(`Дума от ${newWord.length} букви.`);
+        }
+
+        // UI: Активираме бутона
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
     }
     
 	
-	$(document).ready(async function() {
-		await loadWordsFromFile();
+	// -----------------------------------------------------------------------
+    // 4. ИНИЦИАЛИЗАЦИЯ (document.ready) (СИНХРОННА)
+    // -----------------------------------------------------------------------
+	$(document).ready(function() {
+        // Стартираме играта веднага
 		startNewGame(); 
 		
+        // Прикачваме събития
 		$("#submit-guess").click(handleGuess);
 		$("#guess-input").on('keypress', function(e) {
 			if (e.which === 13) { handleGuess();}
 		});
         $("#new-word-button").click(startNewGame);
 	});
+    
+	
+</script>
     
 	
     </script>
