@@ -103,8 +103,8 @@
 	var remainingLetters;
 	var pastGuesses = [];
 
-	function initializeGame() {
-		word = pickWord(filteredWords); 
+	function initializeGame(word) {
+		
 		answerArray = setupWordsArray(word); 
 		remainingGuesses = 10; 
 		remainingLetters = word.length;
@@ -140,17 +140,18 @@
 		$("#guess-input").val("");}
     
     
-    function startNewGame() {
+    async function startNewGame() {
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
-		
-        initializeGame(); 
+		var word = pickWord(filteredWords);
+        initializeGame(word); 
 
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
     }
     
 	
-	$(document).ready(function() {
+	$(document).ready(async function() {
+		await loadWordsFromFile();
 		startNewGame(); 
 		
 		$("#submit-guess").click(handleGuess);
