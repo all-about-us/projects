@@ -33,7 +33,7 @@
     
 <script>
     
-    // Глобални променливи
+    
     let filteredWords = []; 
     var word;
     var answerArray;
@@ -43,14 +43,12 @@
 
     const WORD_LIST_FILE = 'words.txt'; 
 
-    // ⭐ НОВИ КОНСТАНТИ ЗА API
+    
     const MW_API_KEY = `62ef63d6-1b72-4711-867f-2f2b6152b0da`; 
     const MW_DICTIONARY_URL = `https://www.dictionaryapi.com/api/v3/references/learners/json/`; 
     
     
-    // -----------------------------------------------------------------------
-    // 1. АСИНХРОННА ФУНКЦИЯ: Зарежда думите от файла, ако масивът е празен
-    // -----------------------------------------------------------------------
+    
     async function fetchWordList() {
         if (filteredWords.length > 0) {
             return; 
@@ -74,9 +72,7 @@
     }
 
 
-    // -----------------------------------------------------------------------
-    // 2. СИНХРОННА ФУНКЦИЯ: Избира дума от масива
-    // -----------------------------------------------------------------------
+    
     function pickWord() {
         if (filteredWords.length === 0) {
             console.error("No words loaded. Returning fallback 'error'.");
@@ -86,9 +82,7 @@
     }
 
     
-    // -----------------------------------------------------------------------
-    // 3. ФУНКЦИИ ЗА ЛОГИКАТА НА ИГРАТА (непроменени)
-    // -----------------------------------------------------------------------
+    
 	function setupWordsArray(word){
 		var answerArray=[];
 		for(var i = 0; i < word.length; i++){
@@ -168,29 +162,27 @@
 		$("#guess-input").val("");}
     
     
-    // -----------------------------------------------------------------------
-    // 4. ГЛАВНА ФУНКЦИЯ: startNewGame() (С API ЛОГИКА)
-    // -----------------------------------------------------------------------
+    
     async function startNewGame() {
         $("#new-word-button").prop('disabled', true).text('Зареждане...');
         $("#guess-input, #submit-guess").prop('disabled', true);
         $("#word-definition").text('... Извличане на дума и дефиниция...');
 
-        // 1. ИЗЧАКВАМЕ зареждането на списъка
+        
         await fetchWordList(); 
 
         const MAX_ATTEMPTS = 5;
         let selectedWord = "error";
         let definitionText = "Неуспешно извличане на дефиниция след 5 опита.";
 
-        // Цикъл за повторен опит, ако API не върне дефиниция за думата
+        
         for (let attempts = 1; attempts <= MAX_ATTEMPTS; attempts++) {
             
-            selectedWord = pickWord(); // Избираме дума
+            selectedWord = pickWord(); 
             if (selectedWord === "error") break;
 
             try {
-                // 2. АСИНХРОННА API ЗАЯВКА
+                
                 let mwResponse = await fetch(`${MW_DICTIONARY_URL}${selectedWord}?key=${MW_API_KEY}`);
                 
                 if (!mwResponse.ok) {
@@ -199,10 +191,10 @@
 
                 let mwData = await mwResponse.json();
                 
-                // 3. Проверка на резултата и извличане на дефиницията
+                
                 if (Array.isArray(mwData) && mwData[0] && mwData[0].shortdef && mwData[0].shortdef.length > 0) {
                     definitionText = mwData[0].shortdef[0];
-                    break; // Успех! Излизаме от цикъла
+                    break; //
                 } 
 
             } catch (error) {
@@ -210,28 +202,26 @@
             }
         } 
 
-        // 4. Актуализация на UI
+        
         $("#word-definition").text(definitionText);
         
         if (definitionText.startsWith("Неуспешно")) {
              $("#word-mask").text("ГРЕШКА");
              $("#message-area").text(definitionText);
         } else {
-            // Успех
+            
             initializeGame(selectedWord); 
         }
 
         $("#new-word-button").prop('disabled', false).text('Избери друга дума');
-        // Активираме инпута само при успех
+        
         if (!definitionText.startsWith("Неуспешно")) {
             $("#guess-input, #submit-guess").prop('disabled', false); 
         }
     }
     
 	
-	// -----------------------------------------------------------------------
-    // 5. ИНИЦИАЛИЗАЦИЯ (document.ready) (СИНХРОННА)
-    // -----------------------------------------------------------------------
+	
 	$(document).ready(function() {
 		startNewGame(); 
 		
@@ -246,6 +236,7 @@
 </script>
 
 	</body>
+
 
 
 
